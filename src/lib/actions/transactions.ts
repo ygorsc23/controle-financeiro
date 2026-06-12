@@ -64,6 +64,8 @@ export async function createTransaction(prevState: TransactionState, formData: F
   const isInstallment = formData.get("is_installment") === "true";
   const isRecurring = formData.get("is_recurring") === "true";
 
+  const status = formData.get("status") as string || "pending";
+
   const baseTransaction = {
     user_id: user.id,
     account_id: accountId,
@@ -73,7 +75,10 @@ export async function createTransaction(prevState: TransactionState, formData: F
     amount,
     description: formData.get("description") as string || null,
     date,
+    status,
   };
+
+  const shouldUpdateBalance = status === "paid" || status === "received";
 
   try {
     if (isInstallment) {
@@ -96,7 +101,9 @@ export async function createTransaction(prevState: TransactionState, formData: F
         if (error) return { error: error.message };
       }
 
-      await updateAccountBalance(supabase, accountId, amount, type);
+      if (shouldUpdateBalance) {
+        await updateAccountBalance(supabase, accountId, amount, type);
+      }
     } else if (isRecurring) {
       const frequency = formData.get("frequency") as string;
       const intervalValue = parseInt(formData.get("interval_value") as string) || 1;
@@ -140,12 +147,16 @@ export async function createTransaction(prevState: TransactionState, formData: F
         if (error) return { error: error.message };
       }
 
-      await updateAccountBalance(supabase, accountId, amount, type);
+      if (shouldUpdateBalance) {
+        await updateAccountBalance(supabase, accountId, amount, type);
+      }
     } else {
       const { error } = await supabase.from("transactions").insert(baseTransaction);
       if (error) return { error: error.message };
 
-      await updateAccountBalance(supabase, accountId, amount, type);
+      if (shouldUpdateBalance) {
+        await updateAccountBalance(supabase, accountId, amount, type);
+      }
     }
   } catch {
     return { error: "Erro ao criar transação" };
@@ -169,17 +180,22 @@ export async function updateTransaction(prevState: TransactionState, formData: F
 
   if (!original) return { error: "Transação não encontrada" };
 
-  // Revert original balance
-  await updateAccountBalance(
-    supabase,
-    original.account_id,
-    parseFloat(String(original.amount)),
-    original.type,
-    "subtract"
-  );
+  const wasBalanceAffected = original.status === "paid" || original.status === "received";
+
+  // Revert original balance if it was applied
+  if (wasBalanceAffected) {
+    await updateAccountBalance(
+      supabase,
+      original.account_id,
+      parseFloat(String(original.amount)),
+      original.type,
+      "subtract"
+    );
+  }
 
   const type = formData.get("type") as "income" | "expense";
   const amount = parseFloat(formData.get("amount") as string);
+  const status = formData.get("status") as string || "pending";
 
   const { error } = await supabase
     .from("transactions")
@@ -191,18 +207,22 @@ export async function updateTransaction(prevState: TransactionState, formData: F
       amount,
       description: formData.get("description") as string || null,
       date: formData.get("date") as string,
+      status,
     })
     .eq("id", id);
 
   if (error) return { error: error.message };
 
-  // Apply new balance
-  await updateAccountBalance(
-    supabase,
-    formData.get("account_id") as string,
-    amount,
-    type
-  );
+  // Apply new balance if status is paid/received
+  const shouldUpdateBalance = status === "paid" || status === "received";
+  if (shouldUpdateBalance) {
+    await updateAccountBalance(
+      supabase,
+      formData.get("account_id") as string,
+      amount,
+      type
+    );
+  }
 
   revalidatePath("/transactions");
   revalidatePath("/");

@@ -24,6 +24,10 @@ export default async function TransactionsPage(props: {
     query = query.eq("type", searchParams.type);
   }
 
+  if (searchParams.status) {
+    query = query.eq("status", searchParams.status);
+  }
+
   if (searchParams.category_id) {
     query = query.eq("category_id", searchParams.category_id);
   }

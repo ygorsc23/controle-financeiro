@@ -115,6 +115,7 @@ CREATE TABLE transactions (
   amount              DECIMAL(12,2) NOT NULL,
   description         TEXT,
   date                DATE NOT NULL DEFAULT CURRENT_DATE,
+  status              TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'received')),
   -- Parcelamento
   installment_group_id UUID,
   installment_number  INT,
@@ -294,11 +295,34 @@ Nova Transação
   ├── Marcar como recorrente?
   │    └── Sim → frequência, intervalo, total ocorrências
   │
+  ├── Status (pendente / pago / recebido)
+  │
   └── Submit
        ├── Se parcelado: gera N transações mensais
        ├── Se recorrente: cria regra + gera N transações futuras
-       └── Atualiza saldo da conta
+       └── Atualiza saldo da conta (apenas se status = "paid" ou "received")
 ```
+
+---
+
+---
+
+## Status de Transações
+
+| Campo | Valores | Descrição |
+|---|---|---|
+| `status` | `pending`, `paid`, `received` | Indica se a transação está pendente, paga (despesa) ou recebida (receita) |
+
+- Transações **pending** não alteram o saldo da conta
+- Transações **paid** (despesa) ou **received** (receita) atualizam o saldo
+- Ao editar o status de pending → paid/received, o saldo é atualizado
+- Filtro por status disponível na listagem de transações
+
+## Alertas de Orçamento
+
+- **Dashboard**: Seção de alertas exibindo orçamentos que estão próximos do limite (>80%) ou estourados
+- **BudgetCard**: Badge visual de alerta quando o gasto ultrapassa 80% do limite
+- Barra de progresso com cores: verde (<80%), amarelo (80-100%), vermelho (>100%)
 
 ---
 
@@ -316,3 +340,5 @@ Nova Transação
 | 8 | **Relatórios** | ✅ Concluído |
 | 9 | **Instalações + Recorrências** | ✅ Concluído |
 | 10 | **Refinamentos** | ✅ Concluído |
+| 11 | **Status de Transações** | ✅ Concluído |
+| 12 | **Alertas de Orçamento** | ✅ Concluído |

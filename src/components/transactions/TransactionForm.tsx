@@ -112,7 +112,7 @@ export function TransactionForm({
         </select>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="amount">Valor</Label>
           <Input
@@ -251,7 +251,7 @@ export function TransactionForm({
           <p className="text-sm font-medium">Transação recorrente</p>
           <input type="hidden" name="is_recurring" value="true" />
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="frequency">Frequência</Label>
               <select

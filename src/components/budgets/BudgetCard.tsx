@@ -6,7 +6,7 @@ import { deleteBudget } from "@/lib/actions/budgets";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 import { showSuccess, showError } from "@/lib/toast";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, AlertTriangle, AlertCircle } from "lucide-react";
 import type { Budget, Category } from "@/types";
 
 interface BudgetCardProps {
@@ -36,6 +36,8 @@ export function BudgetCard({ budget, spent }: BudgetCardProps) {
     year: "numeric",
   });
 
+  const isNear = !isOver && percentage >= 80;
+
   return (
     <div className="rounded-xl border bg-card p-5 shadow-sm">
       <div className="flex items-start justify-between">
@@ -47,9 +49,21 @@ export function BudgetCard({ budget, spent }: BudgetCardProps) {
             />
           )}
           <div>
-            <p className="font-medium">
-              {budget.category?.name ?? "Sem categoria"}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="font-medium">
+                {budget.category?.name ?? "Sem categoria"}
+              </p>
+              {isNear && (
+                <span title="Próximo do limite">
+                  <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                </span>
+              )}
+              {isOver && (
+                <span title="Limite estourado">
+                  <AlertCircle className="h-4 w-4 text-destructive" />
+                </span>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground capitalize">
               {monthLabel}
             </p>

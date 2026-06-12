@@ -4,6 +4,9 @@ import { TransactionList } from "@/components/transactions/TransactionList";
 import { PieChart } from "@/components/charts/PieChart";
 import { AreaChart } from "@/components/charts/AreaChart";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { formatCurrency } from "@/lib/utils";
+import { AlertTriangle, AlertCircle } from "lucide-react";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -90,11 +93,97 @@ export default async function DashboardPage() {
     .order("date", { ascending: false })
     .limit(5);
 
+  // Budget alerts
+  const { data: budgets } = await supabase
+    .from("budgets")
+    .select("*, category:categories(*)")
+    .eq("month", monthStart);
+
+  const budgetAlerts: { name: string; spent: number; limit: number; color: string; isOver: boolean }[] = [];
+
+  if (budgets) {
+    const categoryIds = budgets.map((b) => b.category_id);
+    const { data: budgetTransactions } = await supabase
+      .from("transactions")
+      .select("category_id, amount")
+      .in("category_id", categoryIds)
+      .gte("date", monthStart)
+      .lte("date", monthEnd);
+
+    const spentByCategory = new Map<string, number>();
+    budgetTransactions?.forEach((t) => {
+      const current = spentByCategory.get(t.category_id) ?? 0;
+      spentByCategory.set(t.category_id, current + parseFloat(String(t.amount)));
+    });
+
+    for (const b of budgets) {
+      const spent = spentByCategory.get(b.category_id) ?? 0;
+      const percentage = (spent / b.limit_amount) * 100;
+      if (percentage >= 80) {
+        budgetAlerts.push({
+          name: b.category?.name ?? "Sem categoria",
+          spent,
+          limit: b.limit_amount,
+          color: b.category?.color ?? "#6b7280",
+          isOver: spent > b.limit_amount,
+        });
+      }
+    }
+  }
+
   return (
     <div className="space-y-6">
       <p className="text-muted-foreground">
         Bem-vindo, {user?.user_metadata?.name ?? "usuário"}!
       </p>
+
+      {budgetAlerts.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-muted-foreground">
+            Alertas de orçamento
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {budgetAlerts.map((alert) => (
+              <div
+                key={alert.name}
+                className={`flex items-center gap-3 rounded-lg border p-3 ${
+                  alert.isOver
+                    ? "border-destructive bg-destructive/5"
+                    : "border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20"
+                }`}
+              >
+                {alert.isOver ? (
+                  <AlertCircle className="h-5 w-5 shrink-0 text-destructive" />
+                ) : (
+                  <AlertTriangle className="h-5 w-5 shrink-0 text-yellow-500" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: alert.color }}
+                    />
+                    <p className="truncate text-sm font-medium">{alert.name}</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {formatCurrency(alert.spent)} / {formatCurrency(alert.limit)}
+                  </p>
+                </div>
+                <Badge
+                  variant="outline"
+                  className={
+                    alert.isOver
+                      ? "border-destructive text-destructive"
+                      : "border-yellow-500 text-yellow-600"
+                  }
+                >
+                  {alert.isOver ? "Estourado" : `${Math.round((alert.spent / alert.limit) * 100)}%`}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <BalanceCard
         balance={totalBalance}

@@ -2,6 +2,8 @@ export type TransactionType = "income" | "expense";
 
 export type AccountType = "checking" | "savings" | "credit";
 
+export type TransactionStatus = "pending" | "paid" | "received";
+
 export type Frequency = "daily" | "weekly" | "monthly" | "yearly";
 
 export type RecurringStatus = "active" | "paused" | "finished";
@@ -53,6 +55,7 @@ export interface Transaction {
   amount: number;
   description: string | null;
   date: string;
+  status: TransactionStatus;
   installment_group_id: string | null;
   installment_number: number | null;
   installment_total: number | null;

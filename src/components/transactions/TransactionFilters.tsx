@@ -17,6 +17,7 @@ export function TransactionFilters({ accounts, categories }: TransactionFiltersP
   const searchParams = useSearchParams();
 
   const currentType = searchParams.get("type") ?? "";
+  const currentStatus = searchParams.get("status") ?? "";
   const currentCategory = searchParams.get("category_id") ?? "";
   const currentAccount = searchParams.get("account_id") ?? "";
   const currentSearch = searchParams.get("search") ?? "";
@@ -37,7 +38,7 @@ export function TransactionFilters({ accounts, categories }: TransactionFiltersP
     router.push("/transactions");
   }
 
-  const hasFilters = currentType || currentCategory || currentAccount || currentSearch || currentStart || currentEnd;
+  const hasFilters = currentType || currentStatus || currentCategory || currentAccount || currentSearch || currentStart || currentEnd;
 
   return (
     <div className="space-y-4 rounded-lg border p-4">
@@ -79,6 +80,21 @@ export function TransactionFilters({ accounts, categories }: TransactionFiltersP
             <option value="">Todos</option>
             <option value="income">Receitas</option>
             <option value="expense">Despesas</option>
+          </select>
+        </div>
+
+        <div className="space-y-1">
+          <Label htmlFor="status">Status</Label>
+          <select
+            id="status"
+            value={currentStatus}
+            onChange={(e) => applyFilter("status", e.target.value)}
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+          >
+            <option value="">Todos</option>
+            <option value="pending">Pendente</option>
+            <option value="paid">Pago</option>
+            <option value="received">Recebido</option>
           </select>
         </div>
 

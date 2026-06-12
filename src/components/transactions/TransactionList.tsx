@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { showSuccess, showError } from "@/lib/toast";
-import { Pencil, Trash2, Repeat, CreditCard } from "lucide-react";
+import { Pencil, Trash2, Repeat, CreditCard, Clock, CheckCircle, XCircle } from "lucide-react";
 import type { Transaction, Account, Category } from "@/types";
 
 interface TransactionRowProps {
@@ -53,6 +53,24 @@ function TransactionRow({ transaction }: TransactionRowProps) {
             </p>
             {transaction.is_recurring && (
               <Repeat className="h-3 w-3 shrink-0 text-muted-foreground" />
+            )}
+            {transaction.status === "pending" && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-yellow-500 text-yellow-600">
+                <Clock className="mr-1 h-2.5 w-2.5" />
+                Pendente
+              </Badge>
+            )}
+            {transaction.status === "paid" && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-destructive text-destructive">
+                <CheckCircle className="mr-1 h-2.5 w-2.5" />
+                Pago
+              </Badge>
+            )}
+            {transaction.status === "received" && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-green-600 text-green-600">
+                <CheckCircle className="mr-1 h-2.5 w-2.5" />
+                Recebido
+              </Badge>
             )}
             {transaction.installment_group_id && (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0">

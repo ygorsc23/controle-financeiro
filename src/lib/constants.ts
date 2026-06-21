@@ -27,3 +27,11 @@ export const ACCOUNT_COLORS = [
   { name: "Rosa", value: "#ec4899" },
   { name: "Cinza", value: "#6b7280" },
 ];
+
+export const ICON_MAP: Record<string, string> = {
+  home: "🏠", utensils: "🍽️", car: "🚗", heart: "❤️",
+  book: "📚", "gamepad-2": "🎮", repeat: "🔄", "shopping-cart": "🛒",
+  briefcase: "💼", laptop: "💻", "trending-up": "📈", "shopping-bag": "🛍️",
+  "more-horizontal": "📌", plus: "➕", "dollar-sign": "💵", "credit-card": "💳",
+  gift: "🎁", phone: "📱", zap: "⚡", sun: "☀️",
+};

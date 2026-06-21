@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createCategory, updateCategory, type CategoryState } from "@/lib/actions/categories";
-import { INCOME_CATEGORIES, EXPENSE_CATEGORIES } from "@/lib/constants";
+import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, ICON_MAP } from "@/lib/constants";
 import type { Category } from "@/types";
 
 interface CategoryFormProps {
@@ -102,7 +102,7 @@ export function CategoryForm({ category }: CategoryFormProps) {
                 className="sr-only peer"
               />
               <div className="flex h-9 w-9 items-center justify-center rounded-md border text-sm transition-colors peer-checked:bg-primary peer-checked:text-primary-foreground">
-                {icon.slice(0, 2)}
+                {ICON_MAP[icon] ?? "📂"}
               </div>
             </label>
           ))}

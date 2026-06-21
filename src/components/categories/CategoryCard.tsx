@@ -5,15 +5,8 @@ import { useState } from "react";
 import { deleteCategory } from "@/lib/actions/categories";
 import { Button } from "@/components/ui/button";
 import { showSuccess, showError } from "@/lib/toast";
+import { ICON_MAP } from "@/lib/constants";
 import type { Category } from "@/types";
-
-const iconMap: Record<string, string> = {
-  home: "🏠", utensils: "🍽️", car: "🚗", heart: "❤️",
-  book: "📚", "gamepad-2": "🎮", repeat: "🔄", "shopping-cart": "🛒",
-  briefcase: "💼", laptop: "💻", "trending-up": "📈", "shopping-bag": "🛍️",
-  "more-horizontal": "📌", plus: "➕", "dollar-sign": "💵", "credit-card": "💳",
-  gift: "🎁", phone: "📱", zap: "⚡", sun: "☀️",
-};
 
 interface CategoryCardProps {
   category: Category;
@@ -42,7 +35,7 @@ export function CategoryCard({ category }: CategoryCardProps) {
               className="flex h-10 w-10 items-center justify-center rounded-lg text-lg"
               style={{ backgroundColor: `${category.color}20` }}
             >
-              {iconMap[category.icon ?? ""] ?? "📂"}
+              {ICON_MAP[category.icon ?? ""] ?? "📂"}
             </div>
             <div>
               <p className="font-medium">{category.name}</p>

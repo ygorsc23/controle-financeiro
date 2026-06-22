@@ -3,13 +3,23 @@ import { BalanceCard } from "@/components/dashboard/BalanceCard";
 import { TransactionList } from "@/components/transactions/TransactionList";
 import { PieChart } from "@/components/charts/PieChart";
 import { AreaChart } from "@/components/charts/AreaChart";
+import { DashboardFilters } from "@/components/dashboard/DashboardFilters";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
 import { AlertTriangle, AlertCircle } from "lucide-react";
 
-export default async function DashboardPage() {
+export default async function DashboardPage(props: {
+  searchParams: Promise<{ [key: string]: string | undefined }>;
+}) {
+  const searchParams = await props.searchParams;
   const supabase = await createClient();
+
+  const includePending = searchParams.includePending === "true";
+
+  function isEffective(t: { status: string }) {
+    return includePending || t.status !== "pending";
+  }
 
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -38,17 +48,17 @@ export default async function DashboardPage() {
     .order("date", { ascending: false });
 
   const monthIncome = monthTransactions
-    ?.filter((t) => t.type === "income")
+    ?.filter((t) => t.type === "income" && isEffective(t))
     .reduce((sum, t) => sum + parseFloat(String(t.amount)), 0) ?? 0;
 
   const monthExpense = monthTransactions
-    ?.filter((t) => t.type === "expense")
+    ?.filter((t) => t.type === "expense" && isEffective(t))
     .reduce((sum, t) => sum + parseFloat(String(t.amount)), 0) ?? 0;
 
   // Pie chart data - expenses by category
   const expenseByCategory = new Map<string, { name: string; value: number; color: string }>();
   monthTransactions
-    ?.filter((t) => t.type === "expense")
+    ?.filter((t) => t.type === "expense" && isEffective(t))
     .forEach((t) => {
       const key = t.category?.name ?? "Sem categoria";
       const existing = expenseByCategory.get(key);
@@ -56,6 +66,24 @@ export default async function DashboardPage() {
         existing.value += parseFloat(String(t.amount));
       } else {
         expenseByCategory.set(key, {
+          name: key,
+          value: parseFloat(String(t.amount)),
+          color: t.category?.color ?? "#6b7280",
+        });
+      }
+    });
+
+  // Pie chart data - income by category
+  const incomeByCategory = new Map<string, { name: string; value: number; color: string }>();
+  monthTransactions
+    ?.filter((t) => t.type === "income" && isEffective(t))
+    .forEach((t) => {
+      const key = t.category?.name ?? "Sem categoria";
+      const existing = incomeByCategory.get(key);
+      if (existing) {
+        existing.value += parseFloat(String(t.amount));
+      } else {
+        incomeByCategory.set(key, {
           name: key,
           value: parseFloat(String(t.amount)),
           color: t.category?.color ?? "#6b7280",
@@ -78,19 +106,32 @@ export default async function DashboardPage() {
       .gte("date", start)
       .lte("date", end);
 
-    const inc = txns?.filter((t) => t.type === "income")
+    const inc = txns?.filter((t) => t.type === "income" && (includePending || t.status !== "pending"))
       .reduce((s, t) => s + parseFloat(String(t.amount)), 0) ?? 0;
-    const exp = txns?.filter((t) => t.type === "expense")
+    const exp = txns?.filter((t) => t.type === "expense" && (includePending || t.status !== "pending"))
       .reduce((s, t) => s + parseFloat(String(t.amount)), 0) ?? 0;
 
     monthlyData.push({ month: label, income: inc, expense: exp });
   }
 
-  // Recent transactions
-  const { data: recentTransactions } = await supabase
+  // Next transactions (pending from today onwards)
+  const today = new Date().toISOString().split("T")[0];
+
+  const { data: nextTransactions } = await supabase
     .from("transactions")
     .select("*, account:accounts(*), category:categories(*), subcategory:subcategories(*)")
-    .order("date", { ascending: false })
+    .gte("date", today)
+    .eq("status", "pending")
+    .order("date", { ascending: true })
+    .limit(5);
+
+  // Overdue transactions (pending before today)
+  const { data: overdueTransactions } = await supabase
+    .from("transactions")
+    .select("*, account:accounts(*), category:categories(*), subcategory:subcategories(*)")
+    .lt("date", today)
+    .eq("status", "pending")
+    .order("date", { ascending: true })
     .limit(5);
 
   // Budget alerts
@@ -111,7 +152,7 @@ export default async function DashboardPage() {
       .lte("date", monthEnd);
 
     const spentByCategory = new Map<string, number>();
-    budgetTransactions?.forEach((t) => {
+    budgetTransactions?.filter((t) => includePending || t.status !== "pending").forEach((t) => {
       const current = spentByCategory.get(t.category_id) ?? 0;
       spentByCategory.set(t.category_id, current + parseFloat(String(t.amount)));
     });
@@ -133,9 +174,12 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <p className="text-muted-foreground">
-        Bem-vindo, {user?.user_metadata?.name ?? "usuário"}!
-      </p>
+      <div className="flex items-center justify-between">
+        <p className="text-muted-foreground">
+          Bem-vindo, {user?.user_metadata?.name ?? "usuário"}!
+        </p>
+        <DashboardFilters />
+      </div>
 
       {budgetAlerts.length > 0 && (
         <div className="space-y-2">
@@ -191,7 +235,7 @@ export default async function DashboardPage() {
         expense={monthExpense}
       />
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium">
@@ -200,6 +244,17 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <PieChart data={Array.from(expenseByCategory.values())} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">
+              Receitas por categoria
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PieChart data={Array.from(incomeByCategory.values())} />
           </CardContent>
         </Card>
 
@@ -215,16 +270,29 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium">
-            Últimas transações
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <TransactionList transactions={recentTransactions ?? []} />
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">
+              Transações vencidas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TransactionList transactions={overdueTransactions ?? []} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">
+              Próximas transações
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TransactionList transactions={nextTransactions ?? []} />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

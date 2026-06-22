@@ -51,6 +51,23 @@ export function TransactionForm({
   );
   const [isInstallment, setIsInstallment] = useState(false);
   const [isRecurring, setIsRecurring] = useState(false);
+  const [rawAmount, setRawAmount] = useState(
+    transaction ? String(Math.round(Math.abs(transaction.amount) * 100)) : ""
+  );
+
+  function formatCurrencyInput(value: string): string {
+    const digits = value.replace(/\D/g, "");
+    if (!digits) return "";
+    const padded = digits.padStart(3, "0");
+    const reais = parseInt(padded.slice(0, -2), 10);
+    const centavos = padded.slice(-2);
+    return `${reais.toLocaleString("pt-BR")},${centavos}`;
+  }
+
+  function handleAmountChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const raw = e.target.value.replace(/\D/g, "");
+    setRawAmount(raw);
+  }
 
   const filteredCategories = categories.filter((c) => c.type === type);
   const filteredSubcategories = subcategories.filter(
@@ -117,13 +134,14 @@ export function TransactionForm({
           <Label htmlFor="amount">Valor</Label>
           <Input
             id="amount"
-            name="amount"
-            type="number"
-            step="0.01"
+            type="text"
+            inputMode="decimal"
             required
-            defaultValue={transaction?.amount}
+            value={rawAmount ? formatCurrencyInput(rawAmount) : ""}
+            onChange={handleAmountChange}
             placeholder="0,00"
           />
+          <input type="hidden" name="amount" value={rawAmount ? (parseInt(rawAmount, 10) / 100).toFixed(2) : ""} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="date">Data</Label>

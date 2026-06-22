@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
+import { RecurringFilters } from "@/components/transactions/RecurringFilters";
 import { Repeat, ChevronRight } from "lucide-react";
 
 const frequencyLabels: Record<string, string> = {
@@ -19,16 +20,37 @@ const statusColors: Record<string, "default" | "secondary" | "success"> = {
   finished: "default",
 };
 
-export default async function RecurringPage() {
+export default async function RecurringPage(props: {
+  searchParams: Promise<{ [key: string]: string | undefined }>;
+}) {
+  const searchParams = await props.searchParams;
   const supabase = await createClient();
 
-  const { data: rules } = await supabase
+  const { data: categories } = await supabase
+    .from("categories")
+    .select("*")
+    .order("name");
+
+  let query = supabase
     .from("recurring_transactions")
-    .select("*, account:accounts(*), category:categories(*)")
-    .order("created_at", { ascending: false });
+    .select("*, account:accounts(*), category:categories(*)");
+
+  if (searchParams.type) {
+    query = query.eq("type", searchParams.type);
+  }
+
+  if (searchParams.category_id) {
+    query = query.eq("category_id", searchParams.category_id);
+  }
+
+  query = query.order("created_at", { ascending: false });
+
+  const { data: rules } = await query;
 
   return (
     <div className="space-y-6">
+      <RecurringFilters categories={categories ?? []} />
+
       <p className="text-sm text-muted-foreground">
         {rules?.length ?? 0} regras recorrentes
       </p>

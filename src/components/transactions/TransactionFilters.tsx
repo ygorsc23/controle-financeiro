@@ -23,6 +23,7 @@ export function TransactionFilters({ accounts, categories }: TransactionFiltersP
   const currentSearch = searchParams.get("search") ?? "";
   const currentStart = searchParams.get("start") ?? "";
   const currentEnd = searchParams.get("end") ?? "";
+  const currentMonth = searchParams.get("month") ?? new Date().toISOString().slice(0, 7);
 
   function applyFilter(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -35,10 +36,39 @@ export function TransactionFilters({ accounts, categories }: TransactionFiltersP
   }
 
   function clearFilters() {
-    router.push("/transactions");
+    const month = new Date().toISOString().slice(0, 7);
+    const start = `${month}-01`;
+    const lastDay = new Date(parseInt(month.split("-")[0]), parseInt(month.split("-")[1]), 0).getDate();
+    const end = `${month}-${String(lastDay).padStart(2, "0")}`;
+    router.push(`/transactions?month=${month}&start=${start}&end=${end}`);
   }
 
-  const hasFilters = currentType || currentStatus || currentCategory || currentAccount || currentSearch || currentStart || currentEnd;
+  const hasFilters = currentType || currentStatus || currentCategory || currentAccount || currentSearch;
+
+  function handleStatusToggle(value: string) {
+    const selected = currentStatus ? currentStatus.split(",") : [];
+    const idx = selected.indexOf(value);
+    if (idx >= 0) {
+      selected.splice(idx, 1);
+    } else {
+      selected.push(value);
+    }
+    applyFilter("status", selected.join(","));
+  }
+
+  function handleMonthChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const value = e.target.value;
+    if (!value) return;
+    const [year, month] = value.split("-");
+    const start = `${value}-01`;
+    const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+    const end = `${value}-${String(lastDay).padStart(2, "0")}`;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("month", value);
+    params.set("start", start);
+    params.set("end", end);
+    router.push(`/transactions?${params.toString()}`);
+  }
 
   return (
     <div className="space-y-4 rounded-lg border p-4">
@@ -84,18 +114,23 @@ export function TransactionFilters({ accounts, categories }: TransactionFiltersP
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="status">Status</Label>
-          <select
-            id="status"
-            value={currentStatus}
-            onChange={(e) => applyFilter("status", e.target.value)}
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-          >
-            <option value="">Todos</option>
-            <option value="pending">Pendente</option>
-            <option value="paid">Pago</option>
-            <option value="received">Recebido</option>
-          </select>
+          <Label>Status</Label>
+          <div className="flex flex-wrap gap-3 pt-1">
+            {(["pending", "paid", "received"] as const).map((s) => {
+              const checked = currentStatus.split(",").includes(s);
+              return (
+                <label key={s} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => handleStatusToggle(s)}
+                    className="rounded border-input"
+                  />
+                  {s === "pending" ? "Pendente" : s === "paid" ? "Pago" : "Recebido"}
+                </label>
+              );
+            })}
+          </div>
         </div>
 
         <div className="space-y-1">
@@ -130,6 +165,17 @@ export function TransactionFilters({ accounts, categories }: TransactionFiltersP
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="space-y-1">
+          <Label htmlFor="month">Competência</Label>
+          <Input
+            id="month"
+            type="month"
+            value={currentMonth}
+            onChange={handleMonthChange}
+            className="flex h-9"
+          />
         </div>
 
         <div className="space-y-1">

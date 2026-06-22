@@ -1,6 +1,9 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { format } from "date-fns/format";
+import parseISO from "date-fns/parseISO";
+import { ptBR } from "date-fns/locale/pt-BR";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -33,10 +36,11 @@ export function formatCurrency(value: number): string {
 }
 
 export function formatDate(date: string | Date): string {
-  return new Intl.DateTimeFormat("pt-BR").format(new Date(date));
+  const d = typeof date === "string" ? parseISO(date) : date;
+  return format(d, "dd/MM/yyyy", { locale: ptBR });
 }
 
 export function formatDateISO(date: string | Date): string {
-  const d = new Date(date);
-  return d.toISOString().split("T")[0];
+  const d = typeof date === "string" ? parseISO(date) : date;
+  return format(d, "yyyy-MM-dd");
 }

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ensureProfileExists } from "@/lib/utils";
+import type { TransactionStatus } from "@/types";
 
 export type TransactionState = { error: string } | undefined;
 
@@ -75,10 +76,7 @@ export async function createTransaction(prevState: TransactionState, formData: F
     amount,
     description: formData.get("description") as string || null,
     date,
-    status,
   };
-
-  const shouldUpdateBalance = status === "paid" || status === "received";
 
   try {
     if (isInstallment) {
@@ -90,9 +88,12 @@ export async function createTransaction(prevState: TransactionState, formData: F
           .toISOString()
           .split("T")[0];
 
+        const installmentStatus = i === 1 ? status : "pending";
+
         const { error } = await supabase.from("transactions").insert({
           ...baseTransaction,
           date: installmentDate,
+          status: installmentStatus,
           installment_group_id: installmentGroupId,
           installment_number: i,
           installment_total: totalInstallments,
@@ -101,7 +102,7 @@ export async function createTransaction(prevState: TransactionState, formData: F
         if (error) return { error: error.message };
       }
 
-      if (shouldUpdateBalance) {
+      if (status === "paid" || status === "received") {
         await updateAccountBalance(supabase, accountId, amount, type);
       }
     } else if (isRecurring) {
@@ -137,9 +138,12 @@ export async function createTransaction(prevState: TransactionState, formData: F
           .toISOString()
           .split("T")[0];
 
+        const occurrenceStatus = i === 0 ? status : "pending";
+
         const { error } = await supabase.from("transactions").insert({
           ...baseTransaction,
           date: occurrenceDate,
+          status: occurrenceStatus,
           recurring_id: rule.id,
           is_recurring: true,
         });
@@ -147,14 +151,17 @@ export async function createTransaction(prevState: TransactionState, formData: F
         if (error) return { error: error.message };
       }
 
-      if (shouldUpdateBalance) {
+      if (status === "paid" || status === "received") {
         await updateAccountBalance(supabase, accountId, amount, type);
       }
     } else {
-      const { error } = await supabase.from("transactions").insert(baseTransaction);
+      const { error } = await supabase.from("transactions").insert({
+        ...baseTransaction,
+        status,
+      });
       if (error) return { error: error.message };
 
-      if (shouldUpdateBalance) {
+      if (status === "paid" || status === "received") {
         await updateAccountBalance(supabase, accountId, amount, type);
       }
     }
@@ -240,14 +247,17 @@ export async function deleteTransaction(id: string) {
 
   if (!transaction) return { error: "Transação não encontrada" };
 
-  // Revert balance
-  await updateAccountBalance(
-    supabase,
-    transaction.account_id,
-    parseFloat(String(transaction.amount)),
-    transaction.type,
-    "subtract"
-  );
+  // Revert balance only if it was previously affected
+  const wasBalanceAffected = transaction.status === "paid" || transaction.status === "received";
+  if (wasBalanceAffected) {
+    await updateAccountBalance(
+      supabase,
+      transaction.account_id,
+      parseFloat(String(transaction.amount)),
+      transaction.type,
+      "subtract"
+    );
+  }
 
   const { error } = await supabase.from("transactions").delete().eq("id", id);
 
@@ -255,4 +265,51 @@ export async function deleteTransaction(id: string) {
 
   revalidatePath("/transactions");
   revalidatePath("/");
+}
+
+export async function quickUpdateTransactionStatus(
+  id: string,
+  newStatus: TransactionStatus
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+
+  const { data: original } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (!original) return { error: "Transação não encontrada" };
+
+  const wasEffective = original.status === "paid" || original.status === "received";
+  if (wasEffective) {
+    await updateAccountBalance(
+      supabase,
+      original.account_id,
+      parseFloat(String(original.amount)),
+      original.type,
+      "subtract"
+    );
+  }
+
+  const { error } = await supabase
+    .from("transactions")
+    .update({ status: newStatus })
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+
+  const willBeEffective = newStatus === "paid" || newStatus === "received";
+  if (willBeEffective) {
+    await updateAccountBalance(
+      supabase,
+      original.account_id,
+      parseFloat(String(original.amount)),
+      original.type
+    );
+  }
+
+  revalidatePath("/transactions");
+  revalidatePath("/");
+  return {};
 }

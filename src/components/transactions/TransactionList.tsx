@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { deleteTransaction } from "@/lib/actions/transactions";
+import { deleteTransaction, quickUpdateTransactionStatus } from "@/lib/actions/transactions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { showSuccess, showError } from "@/lib/toast";
-import { Pencil, Trash2, Repeat, CreditCard, Clock, CheckCircle, XCircle } from "lucide-react";
+import { Pencil, Trash2, Repeat, CreditCard, Clock, CheckCircle, XCircle, Hand, Undo2 } from "lucide-react";
 import type { Transaction, Account, Category } from "@/types";
 
 interface TransactionRowProps {
@@ -21,6 +21,7 @@ interface TransactionRowProps {
 function TransactionRow({ transaction }: TransactionRowProps) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
+  const [updating, setUpdating] = useState(false);
 
   async function handleDelete() {
     if (!confirm("Excluir esta transação?")) return;
@@ -31,6 +32,24 @@ function TransactionRow({ transaction }: TransactionRowProps) {
     } else {
       showSuccess("Transação excluída");
     }
+    router.refresh();
+  }
+
+  async function handleQuickStatus(newStatus: "pending" | "paid" | "received") {
+    setUpdating(true);
+    const result = await quickUpdateTransactionStatus(transaction.id, newStatus);
+    if (result?.error) {
+      showError(result.error);
+    } else {
+      showSuccess(
+        newStatus === "paid"
+          ? "Marcado como pago"
+          : newStatus === "received"
+          ? "Marcado como recebido"
+          : "Revertido para pendente"
+      );
+    }
+    setUpdating(false);
     router.refresh();
   }
 
@@ -108,6 +127,30 @@ function TransactionRow({ transaction }: TransactionRowProps) {
           {formatCurrency(transaction.amount)}
         </span>
 
+        {transaction.status === "pending" ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-green-600"
+            onClick={() => handleQuickStatus(transaction.type === "income" ? "received" : "paid")}
+            disabled={updating}
+            title={transaction.type === "income" ? "Marcar como recebido" : "Marcar como pago"}
+          >
+            <Hand className="h-3.5 w-3.5" />
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-yellow-600"
+            onClick={() => handleQuickStatus("pending")}
+            disabled={updating}
+            title="Reverter para pendente"
+          >
+            <Undo2 className="h-3.5 w-3.5" />
+          </Button>
+        )}
+
         <Link href={`/transactions/${transaction.id}/edit`}>
           <Button variant="ghost" size="icon" className="h-7 w-7">
             <Pencil className="h-3 w-3" />
@@ -143,11 +186,27 @@ export function TransactionList({ transactions }: TransactionListProps) {
     );
   }
 
+  const total = transactions.reduce((sum, t) => {
+    return sum + (t.type === "income" ? t.amount : -t.amount);
+  }, 0);
+
   return (
     <div className="space-y-1">
       {transactions.map((t) => (
         <TransactionRow key={t.id} transaction={t} />
       ))}
+
+      <div className="flex items-center justify-between rounded-lg border border-dashed px-4 py-3">
+        <span className="text-sm font-medium">Total</span>
+        <span
+          className={`text-sm font-bold tabular-nums ${
+            total >= 0 ? "text-green-600" : "text-destructive"
+          }`}
+        >
+          {total >= 0 ? "+" : ""}
+          {formatCurrency(total)}
+        </span>
+      </div>
     </div>
   );
 }

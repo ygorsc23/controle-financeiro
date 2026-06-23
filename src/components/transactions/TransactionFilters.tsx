@@ -161,7 +161,7 @@ export function TransactionFilters({ accounts, categories }: TransactionFiltersP
             <option value="">Todas</option>
             {accounts.map((acc) => (
               <option key={acc.id} value={acc.id}>
-                {acc.name}
+                {acc.name} ({acc.type === "credit" ? "Crédito" : acc.type === "checking" ? "Corrente" : "Poupança"})
               </option>
             ))}
           </select>

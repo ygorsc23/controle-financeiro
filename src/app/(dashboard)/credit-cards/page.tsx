@@ -181,7 +181,7 @@ export default async function CreditCardsPage() {
           </div>
 
           {invoices.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-1">
               {invoices.map((inv) => {
                 const config = statusConfig[inv.status];
                 return (

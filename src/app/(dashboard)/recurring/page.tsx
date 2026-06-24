@@ -56,7 +56,7 @@ export default async function RecurringPage(props: {
       </p>
 
       {rules && rules.length > 0 ? (
-        <div className="space-y-3">
+        <div className="space-y-1">
           {rules.map((rule) => (
             <Link key={rule.id} href={`/recurring/${rule.id}`}>
               <Card className="transition-colors hover:bg-accent/50">

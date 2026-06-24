@@ -62,7 +62,7 @@ export default async function InstallmentsPage() {
       </p>
 
       {groups.length > 0 ? (
-        <div className="space-y-3">
+        <div className="space-y-1">
           {groups.map((g) => (
             <Link key={g.id} href={`/installments/${g.id}`}>
               <Card className="transition-colors hover:bg-accent/50">

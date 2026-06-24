@@ -83,6 +83,10 @@ export async function createTransaction(prevState: TransactionState, formData: F
       const totalInstallments = parseInt(formData.get("installment_total") as string);
       const installmentGroupId = crypto.randomUUID();
 
+      const totalCents = Math.round(amount * 100);
+      const baseCents = Math.floor(totalCents / totalInstallments);
+      const remainderCents = totalCents - baseCents * totalInstallments;
+
       for (let i = 1; i <= totalInstallments; i++) {
         const installmentDate = addMonths(new Date(date), i - 1)
           .toISOString()
@@ -90,8 +94,14 @@ export async function createTransaction(prevState: TransactionState, formData: F
 
         const installmentStatus = i === 1 ? status : "pending";
 
+        const installmentCents = i === totalInstallments
+          ? baseCents + remainderCents
+          : baseCents;
+        const installmentAmount = installmentCents / 100;
+
         const { error } = await supabase.from("transactions").insert({
           ...baseTransaction,
+          amount: installmentAmount,
           date: installmentDate,
           status: installmentStatus,
           installment_group_id: installmentGroupId,
@@ -103,7 +113,7 @@ export async function createTransaction(prevState: TransactionState, formData: F
       }
 
       if (status === "paid" || status === "received") {
-        await updateAccountBalance(supabase, accountId, amount, type);
+        await updateAccountBalance(supabase, accountId, baseCents / 100, type);
       }
     } else if (isRecurring) {
       const frequency = formData.get("frequency") as string;
@@ -263,7 +273,22 @@ export async function deleteTransaction(id: string) {
 
   if (error) return { error: error.message };
 
+  if (transaction.recurring_id) {
+    const { count } = await supabase
+      .from("transactions")
+      .select("*", { count: "exact", head: true })
+      .eq("recurring_id", transaction.recurring_id);
+
+    if (count === 0) {
+      await supabase
+        .from("recurring_transactions")
+        .delete()
+        .eq("id", transaction.recurring_id);
+    }
+  }
+
   revalidatePath("/transactions");
+  revalidatePath("/recurring");
   revalidatePath("/");
 }
 

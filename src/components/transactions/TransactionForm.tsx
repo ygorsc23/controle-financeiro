@@ -10,6 +10,7 @@ import {
   updateTransaction,
   type TransactionState,
 } from "@/lib/actions/transactions";
+import { formatCurrency } from "@/lib/utils";
 import type { Transaction, Account, Category, Subcategory } from "@/types";
 
 interface TransactionFormProps {
@@ -21,6 +22,28 @@ interface TransactionFormProps {
     category?: Category;
     subcategory?: Subcategory;
   };
+}
+
+function InstallmentPreview({
+  totalCents,
+  totalInstallments,
+}: {
+  totalCents: number;
+  totalInstallments: number;
+}) {
+  const baseCents = Math.floor(totalCents / totalInstallments);
+  const remainderCents = totalCents - baseCents * totalInstallments;
+  const baseValue = baseCents / 100;
+  const lastValue = (baseCents + remainderCents) / 100;
+
+  return (
+    <p className="text-sm text-muted-foreground">
+      {totalInstallments}x de {formatCurrency(baseValue)}
+      {lastValue > baseValue && (
+        <> · última {formatCurrency(lastValue)}</>
+      )}
+    </p>
+  );
 }
 
 export function TransactionForm({
@@ -50,6 +73,12 @@ export function TransactionForm({
     transaction?.status ?? "pending"
   );
   const [isInstallment, setIsInstallment] = useState(false);
+  const [installmentTotal, setInstallmentTotal] = useState("");
+
+  function handleInstallmentToggle(checked: boolean) {
+    setIsInstallment(checked);
+    if (!checked) setInstallmentTotal("");
+  }
   const [isRecurring, setIsRecurring] = useState(false);
   const [rawAmount, setRawAmount] = useState(
     transaction ? String(Math.round(Math.abs(transaction.amount) * 100)) : ""
@@ -131,7 +160,9 @@ export function TransactionForm({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="amount">Valor</Label>
+          <Label htmlFor="amount">
+          {isInstallment ? "Valor total" : "Valor"}
+        </Label>
           <Input
             id="amount"
             type="text"
@@ -224,7 +255,7 @@ export function TransactionForm({
           <input
             type="checkbox"
             checked={isInstallment}
-            onChange={(e) => setIsInstallment(e.target.checked)}
+            onChange={(e) => handleInstallmentToggle(e.target.checked)}
             className="rounded border-input"
           />
           É parcelado?
@@ -246,9 +277,18 @@ export function TransactionForm({
                 min="2"
                 max="60"
                 required
+                value={installmentTotal}
+                onChange={(e) => setInstallmentTotal(e.target.value)}
               />
             </div>
           </div>
+
+          {rawAmount && installmentTotal && parseInt(installmentTotal) > 0 && (
+            <InstallmentPreview
+              totalCents={parseInt(rawAmount, 10)}
+              totalInstallments={parseInt(installmentTotal, 10)}
+            />
+          )}
         </div>
       )}
 

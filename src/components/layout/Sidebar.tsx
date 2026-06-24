@@ -12,6 +12,8 @@ import {
   BarChart3,
   Repeat,
   CreditCard,
+  Receipt,
+  WalletCards,
   LogOut,
   X,
 } from "lucide-react";
@@ -24,7 +26,8 @@ const navItems = [
   { href: "/categories", label: "Categorias", icon: PiggyBank },
   { href: "/accounts", label: "Contas", icon: Wallet },
   { href: "/budgets", label: "Orçamentos", icon: Target },
-  { href: "/installments", label: "Parcelas", icon: CreditCard },
+  { href: "/installments", label: "Parcelas", icon: Receipt },
+  { href: "/credit-cards", label: "Cartões", icon: CreditCard },
   { href: "/recurring", label: "Recorrentes", icon: Repeat },
   { href: "/reports", label: "Relatórios", icon: BarChart3 },
 ];

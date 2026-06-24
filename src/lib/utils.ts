@@ -2,7 +2,7 @@ import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { format } from "date-fns/format";
-import parseISO from "date-fns/parseISO";
+import { parseISO } from "date-fns/parseISO";
 import { ptBR } from "date-fns/locale/pt-BR";
 
 export function cn(...inputs: ClassValue[]) {

@@ -102,7 +102,7 @@ export default async function DashboardPage(props: {
 
     const { data: txns } = await supabase
       .from("transactions")
-      .select("type, amount")
+      .select("type, amount, status")
       .gte("date", start)
       .lte("date", end);
 
@@ -146,7 +146,7 @@ export default async function DashboardPage(props: {
     const categoryIds = budgets.map((b) => b.category_id);
     const { data: budgetTransactions } = await supabase
       .from("transactions")
-      .select("category_id, amount")
+      .select("category_id, amount, status")
       .in("category_id", categoryIds)
       .gte("date", monthStart)
       .lte("date", monthEnd);

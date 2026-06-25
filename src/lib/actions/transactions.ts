@@ -188,7 +188,7 @@ export async function updateTransaction(prevState: TransactionState, formData: F
   const supabase = await createClient();
   const id = formData.get("id") as string;
 
-  // Get original transaction to revert balance
+  // Get original transaction
   const { data: original } = await supabase
     .from("transactions")
     .select("*")
@@ -197,48 +197,107 @@ export async function updateTransaction(prevState: TransactionState, formData: F
 
   if (!original) return { error: "Transação não encontrada" };
 
-  const wasBalanceAffected = original.status === "paid" || original.status === "received";
-
-  // Revert original balance if it was applied
-  if (wasBalanceAffected) {
-    await updateAccountBalance(
-      supabase,
-      original.account_id,
-      parseFloat(String(original.amount)),
-      original.type,
-      "subtract"
-    );
-  }
-
+  const updateScope = formData.get("update_scope") as string || "this";
   const type = formData.get("type") as "income" | "expense";
   const amount = parseFloat(formData.get("amount") as string);
   const status = formData.get("status") as string || "pending";
+  const description = formData.get("description") as string || null;
 
-  const { error } = await supabase
-    .from("transactions")
-    .update({
-      account_id: formData.get("account_id") as string,
-      category_id: formData.get("category_id") || null,
-      subcategory_id: formData.get("subcategory_id") || null,
-      type,
-      amount,
-      description: formData.get("description") as string || null,
-      date: formData.get("date") as string,
-      status,
-    })
-    .eq("id", id);
+  // Collect transactions to update
+  let transactionsToUpdate = [original];
 
-  if (error) return { error: error.message };
+  if (updateScope !== "this" && (original.recurring_id || original.installment_group_id)) {
+    let query = supabase.from("transactions").select("*");
 
-  // Apply new balance if status is paid/received
-  const shouldUpdateBalance = status === "paid" || status === "received";
-  if (shouldUpdateBalance) {
-    await updateAccountBalance(
-      supabase,
-      formData.get("account_id") as string,
-      amount,
-      type
-    );
+    if (original.recurring_id) {
+      query = query.eq("recurring_id", original.recurring_id);
+    } else if (original.installment_group_id) {
+      query = query.eq("installment_group_id", original.installment_group_id);
+    }
+
+    const { data: linked } = await query;
+
+    if (linked) {
+      if (updateScope === "future") {
+        if (original.installment_group_id) {
+          transactionsToUpdate = linked.filter(
+            (t) => t.installment_number! >= original.installment_number!
+          );
+        } else if (original.recurring_id) {
+          transactionsToUpdate = linked.filter(
+            (t) => t.date >= original.date
+          );
+        }
+      } else {
+        transactionsToUpdate = linked;
+      }
+    }
+  }
+
+  // Process each transaction
+  for (const txn of transactionsToUpdate) {
+    const isOriginal = txn.id === original.id;
+
+    // Revert original balance if it was applied
+    const wasBalanceAffected = txn.status === "paid" || txn.status === "received";
+    if (wasBalanceAffected) {
+      await updateAccountBalance(
+        supabase,
+        txn.account_id,
+        parseFloat(String(txn.amount)),
+        txn.type,
+        "subtract"
+      );
+    }
+
+    // Update fields
+    if (isOriginal) {
+      const { error } = await supabase
+        .from("transactions")
+        .update({
+          account_id: formData.get("account_id") as string,
+          category_id: formData.get("category_id") || null,
+          subcategory_id: formData.get("subcategory_id") || null,
+          type,
+          amount,
+          description,
+          date: formData.get("date") as string,
+          status,
+        })
+        .eq("id", id);
+
+      if (error) return { error: error.message };
+    } else {
+      const { error } = await supabase
+        .from("transactions")
+        .update({
+          amount,
+          description,
+        })
+        .eq("id", txn.id);
+
+      if (error) return { error: error.message };
+    }
+
+    // Apply new balance
+    const newStatus = isOriginal ? status : txn.status;
+    const shouldUpdateBalance = newStatus === "paid" || newStatus === "received";
+    if (shouldUpdateBalance) {
+      const effectiveAccount = isOriginal ? formData.get("account_id") as string : txn.account_id;
+      const effectiveType = isOriginal ? type : txn.type;
+      await updateAccountBalance(supabase, effectiveAccount, amount, effectiveType);
+    }
+  }
+
+  // If recurring and propagating changes, update the recurring rule too
+  if (original.recurring_id && updateScope !== "this") {
+    await supabase
+      .from("recurring_transactions")
+      .update({
+        amount,
+        description,
+      })
+      .eq("id", original.recurring_id);
   }
 
   revalidatePath("/transactions");

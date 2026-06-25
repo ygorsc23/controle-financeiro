@@ -24,6 +24,18 @@ export default async function EditTransactionPage(props: { params: Promise<{ id:
 
   if (!transaction) notFound();
 
+  // Count linked transactions (installment group or recurring)
+  let linkedCount = 0;
+  if (transaction.recurring_id || transaction.installment_group_id) {
+    const field = transaction.recurring_id ? "recurring_id" : "installment_group_id";
+    const value = transaction.recurring_id ?? transaction.installment_group_id;
+    const { count } = await supabase
+      .from("transactions")
+      .select("*", { count: "exact", head: true })
+      .eq(field, value!);
+    linkedCount = count ?? 0;
+  }
+
   return (
     <div className="mx-auto max-w-lg space-y-6">
       <div>
@@ -37,6 +49,7 @@ export default async function EditTransactionPage(props: { params: Promise<{ id:
         categories={categories ?? []}
         subcategories={subcategories ?? []}
         transaction={transaction}
+        linkedCount={linkedCount}
       />
     </div>
   );

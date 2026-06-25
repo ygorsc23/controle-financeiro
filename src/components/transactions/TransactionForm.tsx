@@ -22,6 +22,7 @@ interface TransactionFormProps {
     category?: Category;
     subcategory?: Subcategory;
   };
+  linkedCount?: number;
 }
 
 function InstallmentPreview({
@@ -51,6 +52,7 @@ export function TransactionForm({
   categories,
   subcategories,
   transaction,
+  linkedCount,
 }: TransactionFormProps) {
   const router = useRouter();
   const isEditing = !!transaction;
@@ -80,6 +82,8 @@ export function TransactionForm({
     if (!checked) setInstallmentTotal("");
   }
   const [isRecurring, setIsRecurring] = useState(false);
+  const [updateScope, setUpdateScope] = useState<"this" | "future" | "all">("this");
+  const hasLinkedTransactions = isEditing && !!(transaction?.recurring_id || transaction?.installment_group_id);
   const [rawAmount, setRawAmount] = useState(
     transaction ? String(Math.round(Math.abs(transaction.amount) * 100)) : ""
   );
@@ -348,6 +352,48 @@ export function TransactionForm({
               />
             </div>
           </div>
+        </div>
+      )}
+
+      {hasLinkedTransactions && (
+        <div className="rounded-lg border p-4 space-y-3">
+          <p className="text-sm font-medium">Aplicar alteração a:</p>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="radio"
+              name="update_scope"
+              value="this"
+              checked={updateScope === "this"}
+              onChange={() => setUpdateScope("this")}
+              className="accent-primary"
+            />
+            Apenas esta transação
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="radio"
+              name="update_scope"
+              value="future"
+              checked={updateScope === "future"}
+              onChange={() => setUpdateScope("future")}
+              className="accent-primary"
+            />
+            Esta e as futuras
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="radio"
+              name="update_scope"
+              value="all"
+              checked={updateScope === "all"}
+              onChange={() => setUpdateScope("all")}
+              className="accent-primary"
+            />
+            Todas as vinculadas
+            {linkedCount && linkedCount > 0 && (
+              <span className="text-muted-foreground">({linkedCount})</span>
+            )}
+          </label>
         </div>
       )}
 

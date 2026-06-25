@@ -21,6 +21,7 @@ interface TransactionFormProps {
     account?: Account;
     category?: Category;
     subcategory?: Subcategory;
+    destination_account?: Account;
   };
   linkedCount?: number;
 }
@@ -62,7 +63,7 @@ export function TransactionForm({
   ) => Promise<TransactionState>;
   const [state, formAction, pending] = useActionState(action, undefined);
 
-  const [type, setType] = useState<"income" | "expense">(
+  const [type, setType] = useState<"income" | "expense" | "transfer">(
     transaction?.type ?? "expense"
   );
   const [selectedAccount, setSelectedAccount] = useState(
@@ -70,6 +71,9 @@ export function TransactionForm({
   );
   const [selectedCategory, setSelectedCategory] = useState(
     transaction?.category_id ?? ""
+  );
+  const [selectedDestAccount, setSelectedDestAccount] = useState(
+    transaction?.destination_account_id ?? ""
   );
   const [status, setStatus] = useState<"pending" | "paid" | "received">(
     transaction?.status ?? "pending"
@@ -109,9 +113,12 @@ export function TransactionForm({
   const selectedAccountData = accounts.find((a) => a.id === selectedAccount);
 
   function handleTypeChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const newType = e.target.value as "income" | "expense";
+    const newType = e.target.value as "income" | "expense" | "transfer";
     setType(newType);
     setSelectedCategory("");
+    if (newType !== "transfer") {
+      setSelectedDestAccount("");
+    }
   }
 
   const today = new Date().toISOString().split("T")[0];
@@ -138,6 +145,7 @@ export function TransactionForm({
         >
           <option value="expense">Despesa</option>
           <option value="income">Receita</option>
+          <option value="transfer">Transferência</option>
         </select>
       </div>
 
@@ -162,10 +170,35 @@ export function TransactionForm({
         </select>
       </div>
 
+      {type === "transfer" && (
+        <div className="space-y-2">
+          <Label htmlFor="destination_account_id">Conta destino</Label>
+          <select
+            id="destination_account_id"
+            name="destination_account_id"
+            value={selectedDestAccount}
+            onChange={(e) => setSelectedDestAccount(e.target.value)}
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+            required
+          >
+            <option value="" disabled>
+              Selecione a conta destino
+            </option>
+            {accounts
+              .filter((a) => a.id !== selectedAccount)
+              .map((acc) => (
+                <option key={acc.id} value={acc.id}>
+                  {acc.name} ({acc.type === "credit" ? "Crédito" : acc.type === "checking" ? "Corrente" : "Poupança"})
+                </option>
+              ))}
+          </select>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="amount">
-          {isInstallment ? "Valor total" : "Valor"}
+          {type === "transfer" ? "Valor" : isInstallment ? "Valor total" : "Valor"}
         </Label>
           <Input
             id="amount"
@@ -190,23 +223,25 @@ export function TransactionForm({
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="status">Status</Label>
-        <select
-          id="status"
-          name="status"
-          value={status}
-          onChange={(e) => setStatus(e.target.value as "pending" | "paid" | "received")}
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-        >
-          <option value="pending">Pendente</option>
-          {type === "income" ? (
-            <option value="received">Recebido</option>
-          ) : (
-            <option value="paid">Pago</option>
-          )}
-        </select>
-      </div>
+      {type !== "transfer" && (
+        <div className="space-y-2">
+          <Label htmlFor="status">Status</Label>
+          <select
+            id="status"
+            name="status"
+            value={status}
+            onChange={(e) => setStatus(e.target.value as "pending" | "paid" | "received")}
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+          >
+            <option value="pending">Pendente</option>
+            {type === "income" ? (
+              <option value="received">Recebido</option>
+            ) : (
+              <option value="paid">Pago</option>
+            )}
+          </select>
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="description">Descrição</Label>
@@ -218,43 +253,47 @@ export function TransactionForm({
         />
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="category_id">Categoria</Label>
-        <select
-          id="category_id"
-          name="category_id"
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-        >
-          <option value="">Sem categoria</option>
-          {filteredCategories.map((cat) => (
-            <option key={cat.id} value={cat.id}>
-              {cat.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      {type !== "transfer" && (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="category_id">Categoria</Label>
+            <select
+              id="category_id"
+              name="category_id"
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+            >
+              <option value="">Sem categoria</option>
+              {filteredCategories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-      {selectedCategory && filteredSubcategories.length > 0 && (
-        <div className="space-y-2">
-          <Label htmlFor="subcategory_id">Subcategoria</Label>
-          <select
-            id="subcategory_id"
-            name="subcategory_id"
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-          >
-            <option value="">Nenhuma</option>
-            {filteredSubcategories.map((sub) => (
-              <option key={sub.id} value={sub.id}>
-                {sub.name}
-              </option>
-            ))}
-          </select>
-        </div>
+          {selectedCategory && filteredSubcategories.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="subcategory_id">Subcategoria</Label>
+              <select
+                id="subcategory_id"
+                name="subcategory_id"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+              >
+                <option value="">Nenhuma</option>
+                {filteredSubcategories.map((sub) => (
+                  <option key={sub.id} value={sub.id}>
+                    {sub.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </>
       )}
 
-      {!isEditing && selectedAccountData?.type === "credit" && (
+      {!isEditing && type !== "transfer" && selectedAccountData?.type === "credit" && (
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"

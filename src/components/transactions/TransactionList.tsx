@@ -8,13 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { showSuccess, showError } from "@/lib/toast";
-import { Pencil, Trash2, Repeat, CreditCard, Clock, CheckCircle, XCircle, Hand, Undo2 } from "lucide-react";
+import { Pencil, Trash2, Repeat, CreditCard, Clock, CheckCircle, XCircle, Hand, Undo2, ArrowRightLeft } from "lucide-react";
 import type { Transaction, Account, Category } from "@/types";
 
 interface TransactionRowProps {
   transaction: Transaction & {
     account?: Account;
     category?: Category;
+    destination_account?: Account;
   };
 }
 
@@ -54,11 +55,14 @@ function TransactionRow({ transaction }: TransactionRowProps) {
   }
 
   const isExpense = transaction.type === "expense";
+  const isTransfer = transaction.type === "transfer";
 
   return (
     <div className="flex items-center justify-between rounded-lg border px-4 py-3 transition-colors hover:bg-accent/50">
       <div className="flex items-center gap-3 min-w-0">
-        {transaction.category && (
+        {isTransfer ? (
+          <ArrowRightLeft className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        ) : transaction.category && (
           <div
             className="h-3 w-3 shrink-0 rounded-full"
             style={{ backgroundColor: transaction.category.color }}
@@ -73,25 +77,28 @@ function TransactionRow({ transaction }: TransactionRowProps) {
             {transaction.is_recurring && (
               <Repeat className="h-3 w-3 shrink-0 text-muted-foreground" />
             )}
-            {transaction.status === "pending" && (
+            {isTransfer ? (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-blue-500 text-blue-600">
+                <ArrowRightLeft className="mr-1 h-2.5 w-2.5" />
+                Transferência
+              </Badge>
+            ) : transaction.status === "pending" ? (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-yellow-500 text-yellow-600">
                 <Clock className="mr-1 h-2.5 w-2.5" />
                 Pendente
               </Badge>
-            )}
-            {transaction.status === "paid" && (
+            ) : transaction.status === "paid" ? (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-destructive text-destructive">
                 <CheckCircle className="mr-1 h-2.5 w-2.5" />
                 Pago
               </Badge>
-            )}
-            {transaction.status === "received" && (
+            ) : (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-green-600 text-green-600">
                 <CheckCircle className="mr-1 h-2.5 w-2.5" />
                 Recebido
               </Badge>
             )}
-            {transaction.installment_group_id && (
+            {!isTransfer && transaction.installment_group_id && (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                 <CreditCard className="mr-1 h-2.5 w-2.5" />
                 {transaction.installment_number}/{transaction.installment_total}
@@ -107,7 +114,13 @@ function TransactionRow({ transaction }: TransactionRowProps) {
                 <span>{transaction.account.name}</span>
               </>
             )}
-            {transaction.category && (
+            {isTransfer && transaction.destination_account && (
+              <>
+                <span>→</span>
+                <span>{transaction.destination_account.name}</span>
+              </>
+            )}
+            {!isTransfer && transaction.category && (
               <>
                 <span>·</span>
                 <span>{transaction.category.name}</span>
@@ -120,14 +133,14 @@ function TransactionRow({ transaction }: TransactionRowProps) {
       <div className="flex items-center gap-2 shrink-0">
         <span
           className={`text-sm font-semibold tabular-nums ${
-            isExpense ? "text-destructive" : "text-green-600"
+            isTransfer ? "text-blue-600" : isExpense ? "text-destructive" : "text-green-600"
           }`}
         >
-          {isExpense ? "-" : "+"}
+          {isTransfer ? "↔" : isExpense ? "-" : "+"}
           {formatCurrency(transaction.amount)}
         </span>
 
-        {transaction.status === "pending" ? (
+        {!isTransfer && transaction.status === "pending" && (
           <Button
             variant="ghost"
             size="icon"
@@ -138,7 +151,8 @@ function TransactionRow({ transaction }: TransactionRowProps) {
           >
             <Hand className="h-3.5 w-3.5" />
           </Button>
-        ) : (
+        )}
+        {!isTransfer && transaction.status !== "pending" && (
           <Button
             variant="ghost"
             size="icon"
@@ -174,6 +188,7 @@ interface TransactionListProps {
   transactions: (Transaction & {
     account?: Account;
     category?: Category;
+    destination_account?: Account;
   })[];
 }
 
@@ -187,6 +202,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
   }
 
   const total = transactions.reduce((sum, t) => {
+    if (t.type === "transfer") return sum;
     return sum + (t.type === "income" ? t.amount : -t.amount);
   }, 0);
 

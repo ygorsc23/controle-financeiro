@@ -1,4 +1,5 @@
-export type TransactionType = "income" | "expense";
+export type TransactionType = "income" | "expense" | "transfer";
+export type CategoryType = "income" | "expense";
 
 export type AccountType = "checking" | "savings" | "credit";
 
@@ -19,7 +20,7 @@ export interface Category {
   id: string;
   user_id: string;
   name: string;
-  type: TransactionType;
+  type: CategoryType;
   color: string;
   icon: string | null;
   created_at: string;
@@ -49,6 +50,7 @@ export interface Transaction {
   id: string;
   user_id: string;
   account_id: string;
+  destination_account_id: string | null;
   category_id: string | null;
   subcategory_id: string | null;
   type: TransactionType;
@@ -66,12 +68,14 @@ export interface Transaction {
   category?: Category;
   subcategory?: Subcategory;
   account?: Account;
+  destination_account?: Account;
 }
 
 export interface RecurringTransaction {
   id: string;
   user_id: string;
   account_id: string;
+  destination_account_id: string | null;
   category_id: string | null;
   subcategory_id: string | null;
   type: TransactionType;

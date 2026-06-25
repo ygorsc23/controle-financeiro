@@ -14,7 +14,7 @@ export default async function EditTransactionPage(props: { params: Promise<{ id:
   ] = await Promise.all([
     supabase
       .from("transactions")
-      .select("*, account:accounts(*), category:categories(*), subcategory:subcategories(*)")
+      .select("*, account:accounts(*), category:categories(*), subcategory:subcategories(*), destination_account:accounts!destination_account_id(*)")
       .eq("id", id)
       .single(),
     supabase.from("accounts").select("*").order("name"),

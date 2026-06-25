@@ -110,6 +110,7 @@ export function TransactionFilters({ accounts, categories }: TransactionFiltersP
             <option value="">Todos</option>
             <option value="income">Receitas</option>
             <option value="expense">Despesas</option>
+            <option value="transfer">Transferências</option>
           </select>
         </div>
 

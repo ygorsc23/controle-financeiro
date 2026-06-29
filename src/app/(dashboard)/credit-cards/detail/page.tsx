@@ -73,7 +73,7 @@ export default async function CreditCardDetailPage(props: {
 
   const { data: transactions } = await supabase
     .from("transactions")
-    .select("*, account:accounts(*), category:categories(*), subcategory:subcategories(*)")
+    .select("*, account:accounts!transactions_account_id_fkey(*), category:categories(*), subcategory:subcategories(*)")
     .eq("account_id", accountId)
     .gte("date", startDate)
     .lte("date", endDate)

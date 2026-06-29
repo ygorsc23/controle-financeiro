@@ -33,7 +33,7 @@ export default async function RecurringPage(props: {
 
   let query = supabase
     .from("recurring_transactions")
-    .select("*, account:accounts(*), category:categories(*)");
+    .select("*, account:accounts!transactions_account_id_fkey(*), category:categories(*)");
 
   if (searchParams.type) {
     query = query.eq("type", searchParams.type);

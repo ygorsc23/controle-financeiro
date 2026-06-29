@@ -19,7 +19,7 @@ export default async function RecurringDetailPage(props: { params: Promise<{ id:
 
   const { data: rule } = await supabase
     .from("recurring_transactions")
-    .select("*, account:accounts(*), category:categories(*)")
+    .select("*, account:accounts!transactions_account_id_fkey(*), category:categories(*)")
     .eq("id", id)
     .single();
 
@@ -27,7 +27,7 @@ export default async function RecurringDetailPage(props: { params: Promise<{ id:
 
   const { data: transactions } = await supabase
     .from("transactions")
-    .select("*, account:accounts(*), category:categories(*), subcategory:subcategories(*)")
+    .select("*, account:accounts!transactions_account_id_fkey(*), category:categories(*), subcategory:subcategories(*)")
     .eq("recurring_id", id)
     .order("date", { ascending: true });
 

@@ -42,7 +42,7 @@ export default async function DashboardPage(props: {
 
   const { data: monthTransactions } = await supabase
     .from("transactions")
-    .select("*, account:accounts(*), category:categories(*), subcategory:subcategories(*)")
+    .select("*, account:accounts!transactions_account_id_fkey(*), category:categories(*), subcategory:subcategories(*)")
     .gte("date", monthStart)
     .lte("date", monthEnd)
     .order("date", { ascending: false });
@@ -119,7 +119,7 @@ export default async function DashboardPage(props: {
 
   const { data: nextTransactions } = await supabase
     .from("transactions")
-    .select("*, account:accounts(*), category:categories(*), subcategory:subcategories(*)")
+    .select("*, account:accounts!transactions_account_id_fkey(*), category:categories(*), subcategory:subcategories(*)")
     .gte("date", today)
     .eq("status", "pending")
     .order("date", { ascending: true })
@@ -128,7 +128,7 @@ export default async function DashboardPage(props: {
   // Overdue transactions (pending before today)
   const { data: overdueTransactions } = await supabase
     .from("transactions")
-    .select("*, account:accounts(*), category:categories(*), subcategory:subcategories(*)")
+    .select("*, account:accounts!transactions_account_id_fkey(*), category:categories(*), subcategory:subcategories(*)")
     .lt("date", today)
     .eq("status", "pending")
     .order("date", { ascending: true })

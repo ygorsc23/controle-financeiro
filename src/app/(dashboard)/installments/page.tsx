@@ -22,7 +22,7 @@ export default async function InstallmentsPage() {
 
   const { data: raw } = await supabase
     .from("transactions")
-    .select("*, account:accounts(*), category:categories(*)")
+    .select("*, account:accounts!transactions_account_id_fkey(*), category:categories(*)")
     .not("installment_group_id", "is", null)
     .order("installment_group_id")
     .order("installment_number");

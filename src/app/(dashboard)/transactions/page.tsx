@@ -18,7 +18,7 @@ export default async function TransactionsPage(props: {
   // Build query
   let query = supabase
     .from("transactions")
-    .select("*, account:accounts(*), category:categories(*), subcategory:subcategories(*), destination_account:accounts!destination_account_id(*)");
+    .select("*, account:accounts!transactions_account_id_fkey(*), category:categories(*), subcategory:subcategories(*), destination_account:accounts!transactions_destination_account_id_fkey(*)");
 
   // Apply filters from search params
   if (searchParams.type) {
